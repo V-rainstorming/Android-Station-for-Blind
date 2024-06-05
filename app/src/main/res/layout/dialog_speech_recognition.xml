@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="300dp"
+    android:layout_height="250dp"
+    android:orientation="vertical"
+    android:background="@drawable/background_speech_dialog"
+    android:padding="20dp">
+
+    <TextView
+        android:id="@+id/tv_speech_prompt"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="말씀해주세요..."
+        android:textColor="#232527"
+        android:textSize="24sp"
+        android:padding="16dp"
+        android:gravity="center"/>
+
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_margin="20dp"
+        android:layout_gravity="center"/>
+
+</LinearLayout>
