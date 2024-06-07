@@ -232,6 +232,7 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
                 text.length,
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
+            
             tvRestTime.text = spannableText
 
             prevDegree = degree
