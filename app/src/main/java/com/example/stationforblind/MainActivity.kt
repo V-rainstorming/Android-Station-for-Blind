@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity() {
         // 버튼 클릭 시 다음 액티비티로 전환
         btnOnSearch.setOnClickListener {
             val intent = Intent(this, SearchResult::class.java).apply {
-                putExtra("searchKeyword", searchKeyword.text)
+                putExtra("searchKeyword", searchKeyword.text.toString())
             }
             startActivity(intent)
         }

@@ -25,6 +25,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.LayoutInflaterCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.viewpager2.widget.ViewPager2
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -42,8 +43,12 @@ class SearchResult : AppCompatActivity() {
     private lateinit var tts : TextToSpeech
 
     // variables for search result
-    private lateinit var items : MutableList<BusData>
+    //private lateinit var items : MutableList<BusData>
+    private lateinit var busDataList : MutableList<BusInformation>
     private lateinit var llSearchResult : LinearLayout
+
+    private lateinit var viewPager : ViewPager2
+    private lateinit var viewPagerAdapter: SliderAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,7 +59,9 @@ class SearchResult : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-        items = mutableListOf()
+        //items = mutableListOf()
+        busDataList = mutableListOf()
+        viewPager = findViewById(R.id.viewpager)
         // initialize speech recognizer
         initializeSpeechRecognizer()
 
@@ -88,14 +95,24 @@ class SearchResult : AppCompatActivity() {
                         200 -> {
                             // 성공적인 응답 처리
                             busInfo.busData.forEach { busData ->
+                                /*
                                 items.add(
                                     BusData(busData.busNumber, busData.travelTime,
                                     busData.numberOfStops, busData.busColor,
                                     busData.sourceName, busData.destinationName,
                                     busData.busID, busData.sourceID, busData.destinationID)
                                 )
+                                 */
+                                busDataList.add(
+                                    BusInformation(busData.busNumber, busData.busColor,
+                                        busData.travelTime, busData.numberOfStops,
+                                        busData.sourceName, busData.destinationName,
+                                        busData.busID, busData.sourceID, busData.destinationID)
+                                )
                             }
-                            updateLayout()
+                            //updateLayout()
+                            viewPagerAdapter = SliderAdapter(this@SearchResult, busDataList)
+                            viewPager.adapter = viewPagerAdapter
                         }
                         513 -> {
                             val tvErrorMsg = findViewById<TextView>(R.id.tv_error_message)
@@ -130,7 +147,7 @@ class SearchResult : AppCompatActivity() {
         speakText(text)
 
     }
-
+    /*
     private fun updateLayout() {
         // set each result's data and add into linear layout
         for (item in items) {
@@ -153,6 +170,7 @@ class SearchResult : AppCompatActivity() {
             llSearchResult.addView(itemView)
         }
     }
+     */
 
     private fun initializeSpeechRecognizer() {
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {

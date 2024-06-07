@@ -31,6 +31,7 @@ import okio.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 import kotlin.math.atan2
+import kotlin.math.sqrt
 
 class WaitBus : AppCompatActivity(), SensorEventListener {
     private lateinit var busArrow : ImageView
@@ -42,7 +43,7 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
     private var visibleArrow = false
 
     // 북극을 기준으로 y축이 얼마나 기울었는가
-    private var axisYFromNorth = 0f
+    private var axisYFromNorth = 90f
     private var sensorDegree = 0f
     private var descartesDegree = 0f
 
@@ -160,8 +161,8 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
     }
 
     private fun calculateDegreeFromCoordination() {
-        val x1 = busDataWithPos.stationX
-        val y1 = busDataWithPos.stationY
+        val x1 = busDataWithPos.busX
+        val y1 = busDataWithPos.busY
         val x2 = busDataWithPos.userX
         val y2 = busDataWithPos.userY
         val dx = x1 - x2
@@ -170,7 +171,7 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
         descartesDegree = ((Math.toDegrees(deg) + 360.0) % 360.0).toFloat()
         //degree = (abs(sensorDegree - 360f) + axisYFromNorth + (450f - descartesDegree) % 360f) % 360f
         //println("SensorDegree: $sensorDegree, Degree: $degree, DescartesDegree: $descartesDegree")
-        distance = busDataWithPos.distanceUserStation
+        distance = sqrt(dx * dx + dy * dy).toInt()
         updateDistanceAndDirection()
     }
 
@@ -232,7 +233,7 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
                 text.length,
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
-            
+
             tvRestTime.text = spannableText
 
             prevDegree = degree

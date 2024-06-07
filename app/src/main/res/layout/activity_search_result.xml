@@ -33,6 +33,12 @@
             android:textSize="30sp"/>
     </LinearLayout>
 
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewpager"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="20dp"
+        app:layout_constraintTop_toBottomOf="@id/ll_search_title"/>
     <LinearLayout
         android:id="@+id/ll_results"
         android:layout_width="wrap_content"

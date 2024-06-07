@@ -4,4 +4,6 @@
     <string name="voice_recognition_button">음성인식 버튼입니다. 누르거나 화면을 흔들어주세요.</string>
     <string name="nfc_icon">nfc icon</string>
     <string name="search_icon">검색 버튼입니다.</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

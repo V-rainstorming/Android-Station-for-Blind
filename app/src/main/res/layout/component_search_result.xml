@@ -3,25 +3,23 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="320dp"
     android:layout_height="wrap_content"
-    android:background="@drawable/background_search_result_card"
     android:padding="10dp"
     android:layout_margin="10dp">
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:background="@drawable/background_search_result_card"
+        android:orientation="vertical"
+        android:padding="10dp">
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
+                android:layout_marginTop="20dp"
+                android:orientation="vertical"
                 android:gravity="center">
-                <ImageView
-                    android:layout_width="50dp"
-                    android:layout_height="50dp"
-                    android:background="@drawable/bus_icon"/>
                 <TextView
                     android:id="@+id/tv_bus_number"
                     android:layout_width="wrap_content"
@@ -29,44 +27,29 @@
                     android:text="511"
                     android:textSize="48sp"
                     android:textColor="#232527"
-                    android:layout_marginStart="10dp"/>
-            </LinearLayout>
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:orientation="vertical"
-                android:layout_weight="1"
-                android:gravity="end">
-                <TextView
-                    android:id="@+id/tv_travel_time"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="15분"
-                    android:textColor="#232527"
-                    android:textSize="24sp"/>
-                <TextView
-                    android:id="@+id/tv_number_of_stops"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="10개 정류장 이동"
-                    android:textColor="#232527"
-                    android:textSize="14sp"/>
+                    android:textStyle="bold"/>
+                <ImageView
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:background="@drawable/bus_icon"/>
             </LinearLayout>
         </LinearLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp"
-            android:layout_marginTop="20dp">
+            android:layout_marginBottom="20dp"
+            android:layout_marginTop="30dp">
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="10dp"
+                android:layout_marginStart="30dp"
+                android:layout_marginEnd="30dp"
                 android:gravity="start">
                 <ImageView
-                    android:layout_width="23dp"
-                    android:layout_height="72dp"
+                    android:layout_width="28dp"
+                    android:layout_height="83dp"
                     android:layout_marginStart="10dp"
                     android:layout_marginTop="1dp"
                     android:layout_gravity="center"
@@ -82,7 +65,7 @@
                         android:layout_height="wrap_content"
                         android:text="인하대 후문"
                         android:textColor="#232527"
-                        android:textSize="18sp"
+                        android:textSize="20sp"
                         android:gravity="center"
                         android:layout_weight="1"
                         android:layout_marginBottom="10dp"/>
@@ -92,12 +75,39 @@
                         android:layout_height="wrap_content"
                         android:text="주안역환승 정류장"
                         android:textColor="#232527"
-                        android:textSize="18sp"
+                        android:textSize="20sp"
                         android:gravity="center"
                         android:layout_weight="1"
                         android:layout_marginTop="10dp"/>
                 </LinearLayout>
             </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginStart="50dp"
+            android:layout_marginEnd="50dp"
+            android:layout_marginBottom="20dp">
+            <TextView
+                android:id="@+id/tv_travel_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="15분"
+                android:textColor="#232527"
+                android:textSize="24sp"
+                android:layout_weight="1"
+                android:layout_gravity="center"/>
+            <TextView
+                android:id="@+id/tv_number_of_stops"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="10개 정류장 이동"
+                android:textColor="#232527"
+                android:textSize="18sp"
+                android:layout_weight="1"
+                android:layout_gravity="center"/>
         </LinearLayout>
     </LinearLayout>
 </FrameLayout>

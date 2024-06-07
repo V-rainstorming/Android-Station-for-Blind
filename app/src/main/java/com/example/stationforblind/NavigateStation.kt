@@ -53,7 +53,7 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
     private var degree = 0f
     private var prevDegree = 0f
     // 북극을 기준으로 y축이 얼마나 기울었는가
-    private var axisYFromNorth = 0f
+    private var axisYFromNorth = 90f
     private var sensorDegree = 0f
     private var descartesDegree = 0f
 
