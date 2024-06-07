@@ -28,6 +28,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.BufferedSource
 import okio.IOException
+import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 import kotlin.math.atan2
 
@@ -47,8 +48,8 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
 
     // N 방향 기준 수평 회전 각 구하기
     private lateinit var sensorManager : SensorManager
-    private var accelerometerValues: FloatArray? = null
-    private var magneticFieldValues: FloatArray? = null
+    //private var accelerometerValues: FloatArray? = null
+    //private var magneticFieldValues: FloatArray? = null
 
     private var distance = 50
 
@@ -71,15 +72,23 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
             insets
         }
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR), SensorManager.SENSOR_DELAY_UI)
+
         tvRestStation = findViewById(R.id.tv_rest_stops)
         tvRestTime = findViewById(R.id.tv_rest_time)
+        busArrow = findViewById(R.id.iv_bus_arrow)
 
         serviceID = intent.getIntExtra("serviceID", 0)
+        client = OkHttpClient.Builder()
+            .readTimeout(0, TimeUnit.MILLISECONDS) // 무제한 타임 아웃 설정
+            .build()
         startEventStream()
     }
 
     private fun showArrow() {
-        busArrow.visibility = View.VISIBLE
+        runOnUiThread {
+            busArrow.visibility = View.VISIBLE
+        }
     }
     /*
     private fun unshowArrow() {
@@ -118,10 +127,11 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
                         val line = source.readUtf8Line()
                         if (line != null && line.startsWith("data:")) {
                             val data = line.substring(5).trim()
-                            val responseBody = objectMapper.readValue(data, StreamData::class.java)
-                            when (responseBody?.userStatus) {
+                            val userStatus = objectMapper.readTree(data).at("/user_status").asText()
+                            when (userStatus) {
                                 "waiting" -> {
                                     // 성공적인 응답 처리
+                                    val responseBody = objectMapper.readValue(data, StreamData::class.java)
                                     busDataWithPos = responseBody.busDataWithPos
 
                                     if (busDataWithPos.leftStation == 1) {
@@ -135,10 +145,10 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
                                     }
                                 }
                                 "onBoard" -> {
+                                    client.dispatcher.cancelAll()
                                     val intent = Intent(this@WaitBus, OnBus::class.java)
                                     intent.putExtra("serviceID", serviceID)
                                     startActivity(intent)
-                                    client.dispatcher.cancelAll()
                                 }
                                 else -> println("Error : No data.")
                             }
@@ -165,6 +175,7 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent) {
+        /*
         when (event.sensor.type) {
             Sensor.TYPE_ACCELEROMETER -> {
                 accelerometerValues = event.values.clone()
@@ -187,6 +198,23 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
                 }
             }
         }
+         */
+        sensorDegree = event.getAzimuthDegrees()
+        if (visibleArrow) {
+            calculateDegreeFromCoordination()
+        }
+        println("Sensor Degree : $sensorDegree")
+    }
+    private fun SensorEvent.getAzimuthDegrees() : Float {
+        val rotationMatrix = FloatArray(9).also {
+            SensorManager.getRotationMatrixFromVector(it, this.values)
+        }
+        val orientation = FloatArray(3).also {
+            SensorManager.getOrientation(rotationMatrix, it)
+        }
+        val azimuthRadians = orientation.getOrElse(0) {0f}
+        val azimuthDegrees = Math.toDegrees(azimuthRadians.toDouble())
+        return ((azimuthDegrees + 360.0) % 360.0).toFloat()
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
@@ -251,8 +279,7 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
 
     override fun onResume() {
         super.onResume()
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_UI)
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), SensorManager.SENSOR_DELAY_UI)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR), SensorManager.SENSOR_DELAY_UI)
     }
 
 

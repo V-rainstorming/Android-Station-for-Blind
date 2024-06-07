@@ -40,12 +40,6 @@ import kotlin.math.abs
 import kotlin.math.atan2
 
 class NavigateStation : AppCompatActivity(), SensorEventListener {
-    object ApplicationConstants {
-        const val SEOUL_LATITUDE = 37.566535
-        const val SEOUL_LONGITUDE = 126.9779692
-        const val SEOUL_ALTITUDE = 38.0
-    }
-
     // tts variables
     private lateinit var tts : TextToSpeech
     private lateinit var btnSpeechRecognize : ImageButton
@@ -65,8 +59,8 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
 
     // N 방향 기준 수평 회전 각 구하기
     private lateinit var sensorManager : SensorManager
-    private var accelerometerValues: FloatArray? = null
-    private var magneticFieldValues: FloatArray? = null
+    //private var accelerometerValues: FloatArray? = null
+    //private var magneticFieldValues: FloatArray? = null
 
     private var distance = 50
     private lateinit var tvDistance : TextView
@@ -91,6 +85,7 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
             insets
         }
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR), SensorManager.SENSOR_DELAY_UI)
 
         // view 연결
         tvDistance = findViewById(R.id.tv_distance)
@@ -102,7 +97,7 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
             if (status == TextToSpeech.SUCCESS) {
                 // TTS 초기화 성공
                 tts.language = Locale.KOREAN
-                speakText("로 안내합니다")
+                speakText("${intent.getStringExtra("source_name")}로 안내합니다")
             } else {
                 // TTS 초기화 실패
                 println("Failed to initialize text to speech")
@@ -184,10 +179,10 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
                                     busDataWithPos = responseBody.busDataWithPos
                                 }
                                 "waiting", "onBoard" -> {
+                                    client.dispatcher.cancelAll()
                                     val intent = Intent(this@NavigateStation, WaitBus::class.java)
                                     intent.putExtra("serviceID", serviceID)
                                     startActivity(intent)
-                                    client.dispatcher.cancelAll()
                                 }
                                 else -> println("Error : No data.")
                             }
@@ -214,12 +209,13 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent) {
+        /*
         when (event.sensor.type) {
             Sensor.TYPE_ACCELEROMETER -> {
-                accelerometerValues = event.values.clone()
+                accelerometerValues = event.values
             }
             Sensor.TYPE_MAGNETIC_FIELD -> {
-                magneticFieldValues = event.values.clone()
+                magneticFieldValues = event.values
             }
         }
         accelerometerValues?.let { accelerometer ->
@@ -227,14 +223,33 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
                 val rotationMatrix = FloatArray(16)
                 val orientation = FloatArray(3)
 
-                SensorManager.getRotationMatrix(rotationMatrix, null, accelerometer, magneticField)
-                SensorManager.getOrientation(rotationMatrix, orientation)
+                if (SensorManager.getRotationMatrix(
+                    rotationMatrix,
+                    null,
+                    accelerometer,
+                    magneticField)) {
+                    SensorManager.getOrientation(rotationMatrix, orientation)
 
-                sensorDegree = ((Math.toDegrees(orientation[0].toDouble()) + 360.0) % 360.0).toFloat()
-                println("SensorDegree in function: $sensorDegree")
-                calculateDegreeFromCoordination()
+                    sensorDegree = (orientation[0] * 180f / Math.PI.toFloat() + 360f) % 360f
+                    println("SensorDegree in function: $sensorDegree")
+                }
             }
         }
+        */
+        sensorDegree = event.getAzimuthDegrees()
+        println("SensorDegree : $sensorDegree")
+        calculateDegreeFromCoordination()
+    }
+    private fun SensorEvent.getAzimuthDegrees() : Float {
+        val rotationMatrix = FloatArray(9).also {
+            SensorManager.getRotationMatrixFromVector(it, this.values)
+        }
+        val orientation = FloatArray(3).also {
+            SensorManager.getOrientation(rotationMatrix, it)
+        }
+        val azimuthRadians = orientation.getOrElse(0) {0f}
+        val azimuthDegrees = Math.toDegrees(azimuthRadians.toDouble())
+        return ((azimuthDegrees + 360.0) % 360.0).toFloat()
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
@@ -305,8 +320,7 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
 
     override fun onResume() {
         super.onResume()
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_UI)
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), SensorManager.SENSOR_DELAY_UI)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR), SensorManager.SENSOR_DELAY_UI)
     }
 
 
