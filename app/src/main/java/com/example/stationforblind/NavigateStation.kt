@@ -9,7 +9,10 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.speech.tts.TextToSpeech
 import android.text.Spannable
 import android.text.SpannableStringBuilder
@@ -22,6 +25,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -39,15 +43,22 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
 
+@RequiresApi(Build.VERSION_CODES.Q)
 class NavigateStation : AppCompatActivity(), SensorEventListener {
+    // vibrator
+    private lateinit var vibrator : Vibrator
+
     // tts variables
     private lateinit var tts : TextToSpeech
-    private lateinit var btnSpeechRecognize : ImageButton
 
     // View variables
     private lateinit var arcView : ArcView
     private lateinit var destinationPoint : ImageView
     private lateinit var pointArrow : ImageView
+
+    private var busNumber = 0
+    private var searchKeyword : String? = null
+    private var sourceName : String? = null
 
     // 현재 각도와 애니메이션을 위한 이전 각도
     private var degree = 0f
@@ -56,6 +67,7 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
     private var axisYFromNorth = 90f
     private var sensorDegree = 0f
     private var descartesDegree = 0f
+    private var directionText = ""
 
     // N 방향 기준 수평 회전 각 구하기
     private lateinit var sensorManager : SensorManager
@@ -84,25 +96,15 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+        // Sensor 연결
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR), SensorManager.SENSOR_DELAY_UI)
+        // Vibrator 연결
+        vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
-        // view 연결
+        // View 연결
         tvDistance = findViewById(R.id.tv_distance)
         tvDirection = findViewById(R.id.tv_direction)
-
-
-        // TextToSpeech 객체 생성
-        tts = TextToSpeech(this) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                // TTS 초기화 성공
-                tts.language = Locale.KOREAN
-                speakText("${intent.getStringExtra("source_name")}로 안내합니다")
-            } else {
-                // TTS 초기화 실패
-                println("Failed to initialize text to speech")
-            }
-        }
 
         // View 설정
         arcView = findViewById(R.id.arc_view)
@@ -113,9 +115,38 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
         val busID = intent.getIntExtra("bus_id", 0)
         val sourceID = intent.getIntExtra("source_id", 0)
         val destinationID = intent.getIntExtra("destination_id", 0)
-        findViewById<TextView>(R.id.tv_navi_source).text = intent.getStringExtra("source_name")
+        busNumber = intent.getIntExtra("bus_number", 0)
+        searchKeyword = intent.getStringExtra("search_keyword")
+        sourceName = intent.getStringExtra("source_name")
+        runOnUiThread {
+            findViewById<TextView>(R.id.tv_navi_source).text = sourceName
+        }
+
+        // TextToSpeech 객체 생성
+        tts = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                // TTS 초기화 성공
+                tts.language = Locale.KOREAN
+                speakText("${sourceName}으로 안내합니다")
+            } else {
+                // TTS 초기화 실패
+                println("Failed to initialize text to speech")
+            }
+        }
 
         retrofitGetServiceID(busID, sourceID, destinationID)
+    }
+    override fun onTouchEvent(event: MotionEvent?): Boolean {
+        if (event?.action == MotionEvent.ACTION_UP) {
+            if (distance >= 100) {
+                val text = "${sourceName}까지 ${directionText}으로 ${distance / 100}m 남았습니다."
+                speakText(text)
+            } else {
+                val text = "${sourceName}까지 ${directionText}으로 ${distance}cm 남았습니다."
+                speakText(text)
+            }
+        }
+        return super.onTouchEvent(event)
     }
 
     private fun retrofitGetServiceID(busID: Int, sourceID: Int, destinationID: Int) {
@@ -182,6 +213,8 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
                                     client.dispatcher.cancelAll()
                                     val intent = Intent(this@NavigateStation, WaitBus::class.java)
                                     intent.putExtra("serviceID", serviceID)
+                                    intent.putExtra("bus_number", busNumber)
+                                    intent.putExtra("search_keyword", searchKeyword)
                                     startActivity(intent)
                                 }
                                 else -> println("Error : No data.")
@@ -204,38 +237,16 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
         descartesDegree = ((Math.toDegrees(deg) + 360.0) % 360.0).toFloat()
         //degree = (abs(sensorDegree - 360f) + axisYFromNorth + (450f - descartesDegree) % 360f) % 360f
         //println("SensorDegree: $sensorDegree, Degree: $degree, DescartesDegree: $descartesDegree")
+        val prevDistance = distance
         distance = busDataWithPos.distanceUserStation
+        if (prevDistance >= 100 && distance < 100) {
+            val text = "${sourceName}까지 ${directionText}으로 ${distance}cm 남았습니다."
+            speakText(text)
+        }
         updateDistanceAndDirection()
     }
 
     override fun onSensorChanged(event: SensorEvent) {
-        /*
-        when (event.sensor.type) {
-            Sensor.TYPE_ACCELEROMETER -> {
-                accelerometerValues = event.values
-            }
-            Sensor.TYPE_MAGNETIC_FIELD -> {
-                magneticFieldValues = event.values
-            }
-        }
-        accelerometerValues?.let { accelerometer ->
-            magneticFieldValues?.let { magneticField ->
-                val rotationMatrix = FloatArray(16)
-                val orientation = FloatArray(3)
-
-                if (SensorManager.getRotationMatrix(
-                    rotationMatrix,
-                    null,
-                    accelerometer,
-                    magneticField)) {
-                    SensorManager.getOrientation(rotationMatrix, orientation)
-
-                    sensorDegree = (orientation[0] * 180f / Math.PI.toFloat() + 360f) % 360f
-                    println("SensorDegree in function: $sensorDegree")
-                }
-            }
-        }
-        */
         sensorDegree = event.getAzimuthDegrees()
         println("SensorDegree : $sensorDegree")
         calculateDegreeFromCoordination()
@@ -258,20 +269,38 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
 
     private fun updateDistanceAndDirection() {
         runOnUiThread {
-            val text = distance.toString() + "m"
-            val spannableText = SpannableStringBuilder(text)
 
-            spannableText.setSpan(
-                ForegroundColorSpan(Color.parseColor("#AAAAAA")),
-                text.length - 1,
-                text.length,
-                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-            tvDistance.text = spannableText
+            if (distance >= 100) {
+                val text = (distance / 100).toString() + "m"
+                val spannableText = SpannableStringBuilder(text)
+
+                spannableText.setSpan(
+                    ForegroundColorSpan(Color.parseColor("#AAAAAA")),
+                    text.length - 1,
+                    text.length,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                tvDistance.text = spannableText
+            } else if (distance >= 50) {
+                val text = distance.toString() + "cm"
+                val spannableText = SpannableStringBuilder(text)
+
+                spannableText.setSpan(
+                    ForegroundColorSpan(Color.parseColor("#AAAAAA")),
+                    text.length - 2,
+                    text.length,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                tvDistance.text = spannableText
+            } else {
+                tvDistance.text = "50cm 이내"
+            }
 
             prevDegree = degree
             degree = (abs(sensorDegree - 360f) + axisYFromNorth + (450f - descartesDegree) % 360f) % 360f
-            val directionText = when {
+            if (degree >= 359f || degree <= 1f)
+                triggerVibration()
+            directionText = when {
                 (degree >= 345f || degree < 15f) -> "12시 방향"
                 (degree < 45f) -> "1시 방향"
                 (degree < 75f) -> "2시 방향"
@@ -312,6 +341,14 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
                 start()
             }
         }
+    }
+
+    private fun triggerVibration() {
+        // 두둥 하는 진동 패턴 설정
+        val pattern = longArrayOf(0, 200, 100, 200)
+
+        // 진동 패턴 실행
+        vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK))
     }
 
     private fun speakText(text : String) {

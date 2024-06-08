@@ -15,6 +15,7 @@ import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -30,7 +31,6 @@ class OnBus : AppCompatActivity() {
 
     private lateinit var routes : MutableList<String>
     private lateinit var llRoutes : LinearLayout
-    private lateinit var btnTts : ImageButton
     private lateinit var tvRestStops : TextView
 
     private var serviceID = 0
@@ -63,22 +63,15 @@ class OnBus : AppCompatActivity() {
             if (status == TextToSpeech.SUCCESS) {
                 // TTS 초기화 성공
                 tts.language = Locale.KOREAN
+                findViewById<ConstraintLayout>(R.id.main).setOnClickListener {
+                    speakText()
+                }
             } else {
                 // TTS 초기화 실패
                 println("Failed to initialize text to speech")
             }
         }
         addOnBackPressedCallback()
-    }
-
-    override fun onTouchEvent(event: MotionEvent?): Boolean {
-        when(event?.action) {
-            MotionEvent.ACTION_DOWN -> {
-                speakText()
-                return true
-            }
-        }
-        return super.onTouchEvent(event)
     }
     private fun startEventStream() {
         val objectMapper = ObjectMapper()

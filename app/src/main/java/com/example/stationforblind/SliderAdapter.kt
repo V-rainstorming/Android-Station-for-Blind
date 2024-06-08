@@ -5,7 +5,8 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 
 class SliderAdapter (
     fragmentActivity: SearchResult,
-    private val busDataList: List<BusInformation>
+    private val busDataList: List<BusInformation>,
+    private val searchKeyword: String?
 ) : FragmentStateAdapter(fragmentActivity) {
     override fun getItemCount(): Int {
         println("Adapter received data: $busDataList")
@@ -14,6 +15,6 @@ class SliderAdapter (
 
     override fun createFragment(position: Int): Fragment {
         println("Adapter received data: $busDataList")
-        return ResultFragment.newInstance(busDataList[position])
+        return ResultFragment.newInstance(busDataList[position], searchKeyword)
     }
 }

@@ -2,8 +2,13 @@ package com.example.stationforblind
 
 import android.Manifest
 import android.app.Dialog
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.Bundle
 import android.os.Parcel
 import android.os.Parcelable
@@ -30,8 +35,9 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.util.Locale
+import kotlin.math.sqrt
 
-class SearchResult : AppCompatActivity() {
+class SearchResult : AppCompatActivity(), SensorEventListener {
     // variables for speech recognition
     private lateinit var speechRecognizer: SpeechRecognizer
     private lateinit var speechDialog : Dialog
@@ -42,8 +48,12 @@ class SearchResult : AppCompatActivity() {
     // text-to-speech
     private lateinit var tts : TextToSpeech
 
+    // 가속도 센서
+    private lateinit var sensorManager : SensorManager
+    private var accelerometer : Sensor ?= null
+    private val shakeThreshold = 15f
+
     // variables for search result
-    //private lateinit var items : MutableList<BusData>
     private lateinit var busDataList : MutableList<BusInformation>
     private lateinit var llSearchResult : LinearLayout
 
@@ -59,6 +69,10 @@ class SearchResult : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+        // 가속도 센서 초기화
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+
         //items = mutableListOf()
         busDataList = mutableListOf()
         viewPager = findViewById(R.id.viewpager)
@@ -78,12 +92,14 @@ class SearchResult : AppCompatActivity() {
 
         // linear layout which contain all results
         llSearchResult = findViewById(R.id.ll_results)
-        //updateLayout()
 
         // post method
         val searchKeyword = intent.getStringExtra("searchKeyword")
         findViewById<TextView>(R.id.tv_search_keyword).text = searchKeyword
-        var text = searchKeyword + "로 검색한 결과입니다 "
+        findViewById<LinearLayout>(R.id.ll_search_title).setOnClickListener {
+            speakText("${searchKeyword}로 검색한 결과입니다")
+        }
+        var text = "${searchKeyword}로 검색한 결과입니다 "
         val input = HashMap<String, Any>()
         input["uuid"] = "2320102FA2"
         input["station_name"] = "$searchKeyword"
@@ -95,14 +111,6 @@ class SearchResult : AppCompatActivity() {
                         200 -> {
                             // 성공적인 응답 처리
                             busInfo.busData.forEach { busData ->
-                                /*
-                                items.add(
-                                    BusData(busData.busNumber, busData.travelTime,
-                                    busData.numberOfStops, busData.busColor,
-                                    busData.sourceName, busData.destinationName,
-                                    busData.busID, busData.sourceID, busData.destinationID)
-                                )
-                                 */
                                 busDataList.add(
                                     BusInformation(busData.busNumber, busData.busColor,
                                         busData.travelTime, busData.numberOfStops,
@@ -111,7 +119,7 @@ class SearchResult : AppCompatActivity() {
                                 )
                             }
                             //updateLayout()
-                            viewPagerAdapter = SliderAdapter(this@SearchResult, busDataList)
+                            viewPagerAdapter = SliderAdapter(this@SearchResult, busDataList, searchKeyword)
                             viewPager.adapter = viewPagerAdapter
                         }
                         513 -> {
@@ -147,30 +155,6 @@ class SearchResult : AppCompatActivity() {
         speakText(text)
 
     }
-    /*
-    private fun updateLayout() {
-        // set each result's data and add into linear layout
-        for (item in items) {
-            val itemView = LayoutInflater.from(this@SearchResult).inflate(R.layout.component_search_result, llSearchResult, false)
-            val travelTimeText = item.travelTime.toString() + "분"
-            val numberOfStopsText = item.numberOfStops.toString() + "개 정류장 이동"
-            itemView.findViewById<TextView>(R.id.tv_bus_number).text = item.busNumber.toString()
-            itemView.findViewById<TextView>(R.id.tv_travel_time).text = travelTimeText
-            itemView.findViewById<TextView>(R.id.tv_number_of_stops).text = numberOfStopsText
-            itemView.findViewById<TextView>(R.id.tv_source_name).text = item.sourceName
-            itemView.findViewById<TextView>(R.id.tv_destination_name).text = item.destinationName
-            itemView.setOnClickListener {
-                val intent = Intent(this@SearchResult, NavigateStation::class.java)
-                intent.putExtra("bus_id", item.busID)
-                intent.putExtra("source_id", item.sourceID)
-                intent.putExtra("destination_id", item.destinationID)
-                intent.putExtra("source_name", item.sourceName)
-                startActivity(intent)
-            }
-            llSearchResult.addView(itemView)
-        }
-    }
-     */
 
     private fun initializeSpeechRecognizer() {
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
@@ -226,6 +210,34 @@ class SearchResult : AppCompatActivity() {
 
     private fun speakText(text: String) {
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+    }
+    override fun onResume() {
+        super.onResume()
+        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        sensorManager.unregisterListener(this)
+    }
+
+    override fun onSensorChanged(event: SensorEvent?) {
+        if (event?.sensor?.type == Sensor.TYPE_ACCELEROMETER) {
+            val x = event.values[0]
+            val y = event.values[1]
+            val z = event.values[2]
+
+            val acceleration = sqrt((x * x + y * y + z * z).toDouble()) - SensorManager.GRAVITY_EARTH
+            if (acceleration > shakeThreshold) {
+                // 화면 흔들림 감지 시 실행할 동작
+                showSpeechDialog()
+                startListening()
+            }
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+        //TODO("Not yet implemented")
     }
 
     override fun onDestroy() {

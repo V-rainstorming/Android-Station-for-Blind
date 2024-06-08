@@ -9,7 +9,13 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.view.View
 import android.Manifest
+import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.speech.tts.TextToSpeech
+import android.view.KeyEvent
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ProgressBar
@@ -21,8 +27,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import java.util.Locale
+import kotlin.math.sqrt
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), SensorEventListener {
     // Speech Recognizer
     private lateinit var speechRecognizer: SpeechRecognizer
     private lateinit var speechDialog : Dialog
@@ -32,6 +39,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnVoiceRecognizer : ImageButton
     private lateinit var btnOnSearch : ImageButton
     private lateinit var searchKeyword : EditText
+
+    // Variables for handling shake
+    private lateinit var sensorManager : SensorManager
+    private var accelerometer : Sensor?= null
+    private var shakeThreshold = 15f
 
     private lateinit var tts : TextToSpeech
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,6 +55,10 @@ class MainActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+
+        // 가속도 센서 초기화
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
         // TextToSpeech 객체 생성
         tts = TextToSpeech(this) { status ->
@@ -59,6 +75,19 @@ class MainActivity : AppCompatActivity() {
         btnVoiceRecognizer = findViewById(R.id.btn_voice_recognition)
         btnOnSearch = findViewById(R.id.btn_on_search)
         searchKeyword = findViewById(R.id.et_search_bar)
+        searchKeyword.setOnEditorActionListener { _, _, event ->
+            // 검색 중에 엔터 눌렀을 때
+            if (event?.keyCode == KeyEvent.KEYCODE_ENTER) {
+                // 검색 버튼 클릭 시와 동일한 동작 실행
+                val intent = Intent(this, SearchResult::class.java).apply {
+                    putExtra("searchKeyword", searchKeyword.text.toString())
+                }
+                startActivity(intent)
+                true // 이벤트 소비
+            } else {
+                false // 이벤트 전파
+            }
+        }
 
         // 버튼 클릭 시 다음 액티비티로 전환
         btnOnSearch.setOnClickListener {
@@ -138,6 +167,35 @@ class MainActivity : AppCompatActivity() {
 
     private fun speakText(text : String) {
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        sensorManager.unregisterListener(this)
+    }
+
+    override fun onSensorChanged(event: SensorEvent?) {
+        if (event?.sensor?.type == Sensor.TYPE_ACCELEROMETER) {
+            val x = event.values[0]
+            val y = event.values[1]
+            val z = event.values[2]
+
+            val acceleration = sqrt((x * x + y * y + z * z).toDouble()) - SensorManager.GRAVITY_EARTH
+            if (acceleration > shakeThreshold) {
+                // 화면 흔들림 감지 시 실행할 동작
+                showSpeechDialog()
+                startListening()
+            }
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+        //TODO("Not yet implemented")
     }
 
     override fun onDestroy() {
