@@ -2,6 +2,7 @@ package com.example.stationforblind
 
 import android.animation.ValueAnimator
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -14,6 +15,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.ViewCompat
@@ -26,6 +28,7 @@ import okio.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
+@RequiresApi(Build.VERSION_CODES.Q)
 class OnBus : AppCompatActivity() {
     private lateinit var tts : TextToSpeech
 
@@ -34,7 +37,7 @@ class OnBus : AppCompatActivity() {
     private lateinit var tvRestStops : TextView
 
     private var serviceID = 0
-    private val baseUrl = "http://www.devhsb.com:28900/MobileBusBlindControl?service_id="
+    private val baseUrl = "https://www.devhsb.com/MobileBusBlindControl?service_id="
     private lateinit var client: OkHttpClient
     private var initRoute = false
 
@@ -72,6 +75,12 @@ class OnBus : AppCompatActivity() {
             }
         }
         addOnBackPressedCallback()
+    }
+    override fun onTouchEvent(event: MotionEvent?): Boolean {
+        if (event?.action == MotionEvent.ACTION_UP) {
+            speakText()
+        }
+        return super.onTouchEvent(event)
     }
     private fun startEventStream() {
         val objectMapper = ObjectMapper()
@@ -188,7 +197,7 @@ class OnBus : AppCompatActivity() {
             val intent = Intent(this@OnBus, MainActivity::class.java)
             handler.postDelayed({
                 startActivity(intent)
-            }, 30000)
+            }, 10000)
         }
     }
 
@@ -200,7 +209,11 @@ class OnBus : AppCompatActivity() {
 
     private fun addOnBackPressedCallback() {
         val callback = object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() { }
+            override fun handleOnBackPressed() {
+                val intent = Intent(this@OnBus, MainActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
+                startActivity(intent)
+            }
         }
 
         this.onBackPressedDispatcher.addCallback(this, callback)

@@ -9,6 +9,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Parcel
 import android.os.Parcelable
@@ -23,13 +24,16 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.LayoutInflaterCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.fragment.app.Fragment
 import androidx.viewpager2.widget.ViewPager2
 import retrofit2.Call
 import retrofit2.Callback
@@ -37,25 +41,27 @@ import retrofit2.Response
 import java.util.Locale
 import kotlin.math.sqrt
 
+@RequiresApi(Build.VERSION_CODES.Q)
 class SearchResult : AppCompatActivity(), SensorEventListener {
     // variables for speech recognition
     private lateinit var speechRecognizer: SpeechRecognizer
     private lateinit var speechDialog : Dialog
     private lateinit var speechPrompt : TextView
     private lateinit var progressBar: ProgressBar
-    private lateinit var btnSpeech : ImageButton
+    //private lateinit var btnSpeech : ImageButton
 
     // text-to-speech
-    private lateinit var tts : TextToSpeech
+    lateinit var tts : TextToSpeech
 
     // 가속도 센서
     private lateinit var sensorManager : SensorManager
     private var accelerometer : Sensor ?= null
     private val shakeThreshold = 15f
+    private var isVoiceRecognizing = false
 
     // variables for search result
     private lateinit var busDataList : MutableList<BusInformation>
-    private lateinit var llSearchResult : LinearLayout
+    //private lateinit var llSearchResult : LinearLayout
 
     private lateinit var viewPager : ViewPager2
     private lateinit var viewPagerAdapter: SliderAdapter
@@ -73,12 +79,6 @@ class SearchResult : AppCompatActivity(), SensorEventListener {
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
-        //items = mutableListOf()
-        busDataList = mutableListOf()
-        viewPager = findViewById(R.id.viewpager)
-        // initialize speech recognizer
-        initializeSpeechRecognizer()
-
         // TextToSpeech 객체 생성
         tts = TextToSpeech(this) { status ->
             if (status == TextToSpeech.SUCCESS) {
@@ -90,19 +90,60 @@ class SearchResult : AppCompatActivity(), SensorEventListener {
             }
         }
 
+        //items = mutableListOf()
+        busDataList = mutableListOf()
+        viewPager = findViewById(R.id.viewpager)
+        // initialize speech recognizer
+        initializeSpeechRecognizer()
+
+
         // linear layout which contain all results
-        llSearchResult = findViewById(R.id.ll_results)
+        //llSearchResult = findViewById(R.id.ll_results)
 
         // post method
         val searchKeyword = intent.getStringExtra("searchKeyword")
-        findViewById<TextView>(R.id.tv_search_keyword).text = searchKeyword
+        findMappedKeyword(searchKeyword!!)
+
+        viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                super.onPageSelected(position)
+                speak(busDataList[position])
+            }
+        })
+    }
+    private fun speak(busData : BusInformation?) {
+        val speechString = "${busData?.sourceName}에서 ${busData?.busNumber}번 버스를 타고 " +
+                "${busData?.destinationName}으로 가는 경로로, " +
+                "${busData?.travelTime}분이 소요됩니다."
+        tts.speak(speechString, TextToSpeech.QUEUE_FLUSH, null, null)
+    }
+    private fun findMappedKeyword(keyword: String) {
+        RetrofitBuilder.api.getMappedKeyword(keyword).enqueue(object : Callback<StationNickname> {
+            override fun onResponse(call : Call<StationNickname>, response: Response<StationNickname>) {
+                if (response.isSuccessful) {
+                    val stationName = response.body()?.stationName
+                    if (stationName == null) {
+                        searchNewKeyword(keyword)
+                    } else {
+                        searchNewKeyword(stationName)
+                    }
+                }
+                else {
+                    println("error : response is not succeed.")
+                }
+            }
+            override fun onFailure(call : Call<StationNickname>, t : Throwable) { }
+        })
+    }
+    private fun searchNewKeyword(keyword : String?) {
+        findViewById<TextView>(R.id.tv_search_keyword).text = keyword
         findViewById<LinearLayout>(R.id.ll_search_title).setOnClickListener {
-            speakText("${searchKeyword}로 검색한 결과입니다")
+            speakText("${keyword}로 검색한 결과입니다.")
         }
-        var text = "${searchKeyword}로 검색한 결과입니다 "
+        var text = "${keyword}로 검색한 결과입니다. "
         val input = HashMap<String, Any>()
         input["uuid"] = "2320102FA2"
-        input["station_name"] = "$searchKeyword"
+        input["station_name"] = "$keyword"
         RetrofitBuilder.api.getPostList(input).enqueue(object : Callback<Post> {
             override fun onResponse(call: Call<Post>, response: Response<Post>) {
                 if (response.isSuccessful) {
@@ -118,21 +159,25 @@ class SearchResult : AppCompatActivity(), SensorEventListener {
                                         busData.busID, busData.sourceID, busData.destinationID)
                                 )
                             }
+                            speakText(text)
                             //updateLayout()
-                            viewPagerAdapter = SliderAdapter(this@SearchResult, busDataList, searchKeyword)
+                            viewPagerAdapter = SliderAdapter(this@SearchResult, busDataList, keyword)
                             viewPager.adapter = viewPagerAdapter
                         }
                         513 -> {
                             val tvErrorMsg = findViewById<TextView>(R.id.tv_error_message)
                             tvErrorMsg.text = "가능한 경로가 존재하지 않습니다."
                             tvErrorMsg.visibility = View.VISIBLE
-                            text += "가능한 경로가 존재하지 않습니다 다시 검색해주세요"
+                            text += "가능한 경로가 존재하지 않습니다. 다시 검색해주세요"
+                            speakText(text)
                         }
                         514 -> {
                             val tvErrorMsg = findViewById<TextView>(R.id.tv_error_message)
-                            tvErrorMsg.text = "현재 운행중인 버스가 존재하지 않습니다."
+                            val tmpText = "현재 운행중인 버스가\n 존재하지 않습니다."
+                            tvErrorMsg.text = tmpText
                             tvErrorMsg.visibility = View.VISIBLE
-                            text += "현재 운행중인 버스가 존재하지 않습니다"
+                            text += "현재 운행중인 버스가 존재하지 않습니다."
+                            speakText(text)
                         }
                         else -> println("Error: ${busInfo?.code}")
                     }
@@ -146,37 +191,34 @@ class SearchResult : AppCompatActivity(), SensorEventListener {
             override fun onFailure(call: Call<Post>, t: Throwable) { }
         })
 
-        // set button to speech recognition
-        btnSpeech = findViewById(R.id.btn_voice_recognition)
-        btnSpeech.setOnClickListener {
-            showSpeechDialog()
-            startListening()
-        }
-        speakText(text)
-
     }
 
     private fun initializeSpeechRecognizer() {
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
             setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {
+                    isVoiceRecognizing = true
                     progressBar.visibility = View.VISIBLE
                     speechPrompt.text = "말씀해주세요..."
                 }
 
                 override fun onResults(results: Bundle?) {
+                    isVoiceRecognizing = false
                     progressBar.visibility = View.GONE
                     speechDialog.dismiss()
                     val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     val intent = Intent(this@SearchResult, SearchResult::class.java).apply {
                         putExtra("searchKeyword", matches?.get(0))
                     }
+                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                     startActivity(intent)
                 }
                 override fun onEndOfSpeech() {
+                    isVoiceRecognizing = false
                     progressBar.visibility = View.GONE
                 }
                 override fun onError(error: Int) {
+                    isVoiceRecognizing = false
                     progressBar.visibility = View.GONE
                     speechDialog.dismiss()
                     println("Error occurred: $error")
@@ -230,8 +272,11 @@ class SearchResult : AppCompatActivity(), SensorEventListener {
             val acceleration = sqrt((x * x + y * y + z * z).toDouble()) - SensorManager.GRAVITY_EARTH
             if (acceleration > shakeThreshold) {
                 // 화면 흔들림 감지 시 실행할 동작
-                showSpeechDialog()
-                startListening()
+                if (!isVoiceRecognizing) {
+                    isVoiceRecognizing = true
+                    showSpeechDialog()
+                    startListening()
+                }
             }
         }
     }
@@ -247,4 +292,5 @@ class SearchResult : AppCompatActivity(), SensorEventListener {
         tts.shutdown()
         super.onDestroy()
     }
+
 }

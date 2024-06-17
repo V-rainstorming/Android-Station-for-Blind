@@ -22,6 +22,12 @@ interface API {
     fun getPostList(@Body params: HashMap<String, Any>): Call<Post>
     @POST("/RegisterService")
     fun getServiceID(@Body params: HashMap<String, Any>): Call<ServiceID>
+    @GET("/azimuth")
+    fun getAzimuthFromServer(): Call<Azimuth>
+    @GET("/bus_station_nickname")
+    fun getMappedKeyword(
+        @Query("bus_station_nickname") nickname: String
+    ): Call<StationNickname>
     @GET("/MobileBusBlindControl")
     @Streaming
     fun getPos(
@@ -34,11 +40,14 @@ object RetrofitBuilder{
         .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
         .create()
     var api : API = Retrofit.Builder()
-        .baseUrl("http://www.devhsb.com:28900")
+        .baseUrl("https://www.devhsb.com")
         .addConverterFactory(GsonConverterFactory.create(gson))
         .build()
         .create(API::class.java)
 }
+data class Azimuth (@SerializedName("azimuth") val azimuth: Int)
+
+data class StationNickname (@SerializedName("station_name") val stationName: String)
 
 data class Post (@SerializedName("status") val status: String,
                  @SerializedName("code") val code: Int,

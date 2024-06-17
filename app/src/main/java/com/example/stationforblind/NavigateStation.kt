@@ -47,6 +47,7 @@ import kotlin.math.atan2
 class NavigateStation : AppCompatActivity(), SensorEventListener {
     // vibrator
     private lateinit var vibrator : Vibrator
+    private var isVibrating = false
 
     // tts variables
     private lateinit var tts : TextToSpeech
@@ -64,7 +65,7 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
     private var degree = 0f
     private var prevDegree = 0f
     // 북극을 기준으로 y축이 얼마나 기울었는가
-    private var axisYFromNorth = 90f
+    private var axisYFromNorth = 0f
     private var sensorDegree = 0f
     private var descartesDegree = 0f
     private var directionText = ""
@@ -134,15 +135,27 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
             }
         }
 
+        RetrofitBuilder.api.getAzimuthFromServer().enqueue(object : Callback<Azimuth> {
+            override fun onResponse(call: Call<Azimuth>, response: Response<Azimuth>) {
+                if (response.isSuccessful) {
+                    axisYFromNorth = response.body()?.azimuth!!.toFloat()
+                    println("Server sent a azimuth value : $axisYFromNorth")
+                } else {
+                    println("Getting Azimuth from server is failed.")
+                }
+            }
+
+            override fun onFailure(call: Call<Azimuth>, t: Throwable) { }
+        })
         retrofitGetServiceID(busID, sourceID, destinationID)
     }
     override fun onTouchEvent(event: MotionEvent?): Boolean {
         if (event?.action == MotionEvent.ACTION_UP) {
             if (distance >= 100) {
-                val text = "${sourceName}까지 ${directionText}으로 ${distance / 100}m 남았습니다."
+                val text = "${directionText}으로 ${distance / 100}m 남았습니다."
                 speakText(text)
             } else {
-                val text = "${sourceName}까지 ${directionText}으로 ${distance}cm 남았습니다."
+                val text = "${directionText}으로 ${distance}cm 남았습니다."
                 speakText(text)
             }
         }
@@ -281,25 +294,20 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
                 tvDistance.text = spannableText
-            } else if (distance >= 50) {
-                val text = distance.toString() + "cm"
-                val spannableText = SpannableStringBuilder(text)
-
-                spannableText.setSpan(
-                    ForegroundColorSpan(Color.parseColor("#AAAAAA")),
-                    text.length - 2,
-                    text.length,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-                tvDistance.text = spannableText
             } else {
-                tvDistance.text = "50cm 이내"
+                tvDistance.text = "1m 이내"
             }
 
             prevDegree = degree
             degree = (abs(sensorDegree - 360f) + axisYFromNorth + (450f - descartesDegree) % 360f) % 360f
-            if (degree >= 359f || degree <= 1f)
-                triggerVibration()
+            isVibrating = if (degree >= 357f || degree <= 3f) {
+                if (!isVibrating)
+                    triggerVibration()
+                true
+            } else {
+                vibrator.cancel()
+                false
+            }
             directionText = when {
                 (degree >= 345f || degree < 15f) -> "12시 방향"
                 (degree < 45f) -> "1시 방향"
@@ -344,11 +352,8 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
     }
 
     private fun triggerVibration() {
-        // 두둥 하는 진동 패턴 설정
-        val pattern = longArrayOf(0, 200, 100, 200)
-
-        // 진동 패턴 실행
-        vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK))
+        // 진동 실행
+        vibrator.vibrate(VibrationEffect.createOneShot(200, 80))
     }
 
     private fun speakText(text : String) {
@@ -358,12 +363,14 @@ class NavigateStation : AppCompatActivity(), SensorEventListener {
     override fun onResume() {
         super.onResume()
         sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR), SensorManager.SENSOR_DELAY_UI)
+        vibrator.cancel()
     }
 
 
     override fun onPause() {
         super.onPause()
         sensorManager.unregisterListener(this)
+        vibrator.cancel()
     }
 
     override fun onDestroy() {

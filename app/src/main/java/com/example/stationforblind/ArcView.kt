@@ -29,7 +29,7 @@ class ArcView @JvmOverloads constructor(
 
         val centerX = width / 2f
         val centerY = height / 2f
-        val radius = min(width, height) / 3f
+        val radius = 320f
 
         val startAngle = when {
             currentAngle <= 180f -> -80f

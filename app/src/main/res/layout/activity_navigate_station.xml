@@ -81,13 +81,15 @@
             android:layout_height="wrap_content"
             android:text=""
             android:textColor="@color/white"
-            android:textSize="48sp"/>
+            android:textSize="48sp"
+            android:layout_gravity="center"/>
         <TextView
             android:id="@+id/tv_direction"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text=""
             android:textColor="@color/white"
-            android:textSize="36sp"/>
+            android:textSize="36sp"
+            android:layout_gravity="center"/>
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

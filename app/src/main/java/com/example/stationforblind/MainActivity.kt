@@ -14,13 +14,16 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
 import android.speech.tts.TextToSpeech
 import android.view.KeyEvent
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -29,6 +32,7 @@ import androidx.core.view.WindowInsetsCompat
 import java.util.Locale
 import kotlin.math.sqrt
 
+@RequiresApi(Build.VERSION_CODES.Q)
 class MainActivity : AppCompatActivity(), SensorEventListener {
     // Speech Recognizer
     private lateinit var speechRecognizer: SpeechRecognizer
@@ -44,6 +48,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var sensorManager : SensorManager
     private var accelerometer : Sensor?= null
     private var shakeThreshold = 15f
+    private var isVoiceRecognizing = false
 
     private lateinit var tts : TextToSpeech
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,7 +60,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-
+        //addOnBackPressedCallback()
         // 가속도 센서 초기화
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
@@ -65,7 +70,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             if (status == TextToSpeech.SUCCESS) {
                 // TTS 초기화 성공
                 tts.language = Locale.KOREAN
-                speakText("NFC를 태그하거나 목적지를 입력해주세요. 핸드폰을 흔들면 음성인식이 실행됩니다.")
+                speakText("목적지를 입력해주세요. 핸드폰을 흔들면 음성인식이 실행됩니다.")
             } else {
                 // TTS 초기화 실패
                 println("Failed to initialize text to speech")
@@ -110,11 +115,14 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
             setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {
+                    isVoiceRecognizing = true
                     progressBar.visibility = View.VISIBLE
                     speechPrompt.text = "말씀해주세요..."
+                    //speakText("말씀해주세요.")
                 }
 
                 override fun onResults(results: Bundle?) {
+                    isVoiceRecognizing = false
                     progressBar.visibility = View.GONE
                     speechDialog.dismiss()
                     val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
@@ -124,9 +132,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                     startActivity(intent)
                 }
                 override fun onEndOfSpeech() {
+                    isVoiceRecognizing = false
                     progressBar.visibility = View.GONE
                 }
                 override fun onError(error: Int) {
+                    isVoiceRecognizing = false
                     progressBar.visibility = View.GONE
                     speechDialog.dismiss()
                     println("Error occurred: $error")
@@ -188,8 +198,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             val acceleration = sqrt((x * x + y * y + z * z).toDouble()) - SensorManager.GRAVITY_EARTH
             if (acceleration > shakeThreshold) {
                 // 화면 흔들림 감지 시 실행할 동작
-                showSpeechDialog()
-                startListening()
+                if (!isVoiceRecognizing) {
+                    isVoiceRecognizing = true
+                    showSpeechDialog()
+                    startListening()
+                }
             }
         }
     }
@@ -204,5 +217,15 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         tts.stop()
         tts.shutdown()
         super.onDestroy()
+    }
+
+    private fun addOnBackPressedCallback() {
+        val callback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                finish()
+            }
+        }
+
+        this.onBackPressedDispatcher.addCallback(this, callback)
     }
 }

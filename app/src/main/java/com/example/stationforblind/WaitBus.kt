@@ -3,13 +3,18 @@ package com.example.stationforblind
 import android.animation.ValueAnimator
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.speech.tts.TextToSpeech
@@ -33,27 +38,35 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.BufferedSource
 import okio.IOException
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.sqrt
 
-@RequiresApi(Build.VERSION_CODES.O)
+@RequiresApi(Build.VERSION_CODES.Q)
 class WaitBus : AppCompatActivity(), SensorEventListener {
     private lateinit var busArrow : ImageView
     private lateinit var tvRestTime : TextView
     private lateinit var tvRestStation : TextView
+
+    private lateinit var waveView1 : ImageView
+    //private lateinit var waveView2 : ImageView
+    //private var handlerAnimation = Handler()
+    private var isPulse = false
 
     private var searchKeyword : String? = null
     private var busNumber = 333
 
     private var prevDegree = 0f
     private var degree = 0f
-    private var visibleArrow = false
+    //private var visibleArrow = false
 
     // 북극을 기준으로 y축이 얼마나 기울었는가
-    private var axisYFromNorth = 90f
+    private var axisYFromNorth = 0f
     private var sensorDegree = 0f
     private var descartesDegree = 0f
 
@@ -61,10 +74,12 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
     private lateinit var sensorManager : SensorManager
 
     private lateinit var tts : TextToSpeech
+    private var ttsFirst = true
     private lateinit var vibrator : Vibrator
     private var vibrationMode = 0
 
     private var distance = 50
+    private var directionString = ""
 
     private var serviceID = 0
     private var busDataWithPos = BusDataWithPos(0, 0.0, 0.0,
@@ -91,6 +106,7 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
         tts = TextToSpeech(this) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 tts.language = Locale.KOREAN
+                ttsFirst = true
             } else {
                 // TTS 초기화 실패
                 println("Failed to initialize text to speech")
@@ -104,7 +120,25 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
         findViewById<TextView>(R.id.tv_bus_title).text = busNumber.toString()
         searchKeyword = intent.getStringExtra("search_keyword")
 
+        waveView1 = findViewById(R.id.img_animation1)
+        //waveView2 = findViewById(R.id.img_animation2)
+
+        //changeImageColor(findViewById(R.id.iv_bus), Color.parseColor("#299827"), Color.parseColor("#000000"))
+
         addOnBackPressedCallback()
+
+        RetrofitBuilder.api.getAzimuthFromServer().enqueue(object : Callback<Azimuth> {
+            override fun onResponse(call: Call<Azimuth>, response: Response<Azimuth>) {
+                if (response.isSuccessful) {
+                    axisYFromNorth = response.body()?.azimuth!!.toFloat()
+                    println("Server sent a azimuth value : $axisYFromNorth")
+                } else {
+                    println("Getting Azimuth from server is failed.")
+                }
+            }
+
+            override fun onFailure(call: Call<Azimuth>, t: Throwable) { }
+        })
 
         serviceID = intent.getIntExtra("serviceID", 0)
         client = OkHttpClient.Builder()
@@ -119,7 +153,7 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
                 val text = "${busNumber}번 버스 도착까지 ${busDataWithPos.leftStation}분 남았습니다."
                 speakText(text)
             } else {
-                val text = "${busNumber}번 버스가 곧 도착합니다. 버스가 가까워질수록 진동이 빨라집니다."
+                val text = "${directionString}으로 ${distance / 100}m 거리에 있습니다."
                 speakText(text)
             }
         }
@@ -131,17 +165,22 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
             busArrow.visibility = View.VISIBLE
         }
     }
-    /*
-    private fun unshowArrow() {
-        busArrow.visibility = View.GONE
-    }*/
+
+    private fun disableArrow() {
+        runOnUiThread {
+            busArrow.visibility = View.GONE
+        }
+    }
 
     private fun updateLayout() {
-        val text = "${busNumber}번 버스 도착까지 ${busDataWithPos.leftStation}분 남았습니다."
-        speakText(text)
+        if (ttsFirst) {
+            ttsFirst = false
+            val text = "${busNumber}번 버스 도착까지 ${busDataWithPos.leftStation}분 남았습니다."
+            speakText(text)
+        }
         runOnUiThread {
             val restStopsString = busDataWithPos.leftStation.toString() + "번째 전"
-            val restTimeString = busDataWithPos.leftStation.toString() + "분 전"
+            val restTimeString = busDataWithPos.leftTime.toString() + "분 전"
             findViewById<TextView>(R.id.tv_rest_stops).text = restStopsString
             findViewById<TextView>(R.id.tv_rest_time).text = restTimeString
         }
@@ -176,16 +215,6 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
                                     // 성공적인 응답 처리
                                     val responseBody = objectMapper.readValue(data, StreamData::class.java)
                                     busDataWithPos = responseBody.busDataWithPos
-
-                                    if (busDataWithPos.leftStation == 1) {
-                                        visibleArrow = true
-                                        showArrow()
-                                    } else {
-                                        // 만약 못 탔으면,
-                                        //visibleArrow = false
-                                        //unshowArrow()
-                                        updateLayout()
-                                    }
                                 }
                                 "onBoard" -> {
                                     client.dispatcher.cancelAll()
@@ -203,6 +232,12 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
     }
 
     private fun calculateDegreeFromCoordination() {
+        if (busDataWithPos.leftStation > 1) {
+            updateLayout()
+            disableArrow()
+            vibrator.cancel()
+            return
+        }
         val x1 = busDataWithPos.busX
         val y1 = busDataWithPos.busY
         val x2 = busDataWithPos.userX
@@ -218,9 +253,7 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent) {
         sensorDegree = event.getAzimuthDegrees()
-        if (visibleArrow) {
-            calculateDegreeFromCoordination()
-        }
+        calculateDegreeFromCoordination()
         println("Sensor Degree : $sensorDegree")
     }
     private fun SensorEvent.getAzimuthDegrees() : Float {
@@ -252,19 +285,8 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
                 tvRestTime.text = spannableText
-            } else if (distance >= 50) {
-                val text = distance.toString() + "cm"
-                val spannableText = SpannableStringBuilder(text)
-
-                spannableText.setSpan(
-                    ForegroundColorSpan(Color.parseColor("#AAAAAA")),
-                    text.length - 2,
-                    text.length,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-                tvRestTime.text = spannableText
             } else {
-                val text = "50cm 이내"
+                val text = "1m 이내"
                 tvRestTime.text = text
             }
             vibrateWithDistance()
@@ -286,8 +308,21 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
                 (degree < 315f) -> "10시 방향"
                 else -> "11시 방향"
             }
+            directionString = directionText
             tvRestStation.text = directionText
 
+            if (distance < 100) {
+                disableArrow()
+                if (!isPulse) {
+                    isPulse = true
+                    startPulse()
+                }
+                return@runOnUiThread
+            }
+
+            showArrow()
+            isPulse = false
+            stopPulse()
             // 시계
             if (prevDegree <= degree) {
                 if (degree - prevDegree > 180f) {
@@ -318,24 +353,26 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
     }
 
     private fun vibrateWithDistance() {
+        println("vibration mode : $vibrationMode")
         val currentMode = when {
-            distance > 500 -> 0
-            distance > 300 -> 1
-            distance > 100 -> 2
-            distance > 50 -> 3
+            distance > 1000 -> 0
+            distance > 500 -> 1
+            distance > 300 -> 2
+            distance > 100 -> 3
             else -> 4
         }
         if (currentMode == vibrationMode) return
+        println("not returned.")
         vibrationMode = currentMode
-        val pattern = when (vibrationMode) {
-            0 -> longArrayOf(0, 0)
-            1 -> longArrayOf(3000, 200)
-            2 -> longArrayOf(1000, 200)
-            3 -> longArrayOf(500, 200)
-            else -> longArrayOf(250, 200)
-        }
         vibrator.cancel()
-        vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
+        if (vibrationMode == 0) return
+        val pattern = when (vibrationMode) {
+            1 -> longArrayOf(3000, 200, 3000, 200)
+            2 -> longArrayOf(1000, 200, 1000, 200)
+            3 -> longArrayOf(500, 200, 500, 200)
+            else -> longArrayOf(250, 200, 250, 200)
+        }
+        vibrator.vibrate(VibrationEffect.createWaveform(pattern, 0))
     }
 
     override fun onResume() {
@@ -355,6 +392,7 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
             override fun handleOnBackPressed() {
                 val intent = Intent(this@WaitBus, SearchResult::class.java)
                 intent.putExtra("searchKeyword", searchKeyword)
+                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                 startActivity(intent)
             }
         }
@@ -368,4 +406,46 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
         vibrator.cancel()
         super.onDestroy()
     }
+
+    private fun startPulse() {
+        runnable.run()
+    }
+
+    private fun stopPulse() {
+        Handler(Looper.getMainLooper()).removeCallbacks(runnable)
+    }
+
+    private var runnable = Runnable {
+        waveView1.animate().scaleX(2f).scaleY(2f).alpha(0f).setDuration(1000)
+            .withEndAction {
+                waveView1.scaleX = 1f
+                waveView1.scaleY = 1f
+                waveView1.alpha = 1f
+            }
+        /*
+        waveView2.animate().scaleX(2f).scaleY(2f).alpha(0f).setDuration(700)
+            .withEndAction {
+                waveView1.scaleX = 1f
+                waveView1.scaleY = 1f
+                waveView1.alpha = 1f
+            }
+         */
+        Handler(Looper.getMainLooper()).postDelayed({
+            isPulse = false
+        }, 1500)
+    }
+    /*
+    private fun changeImageColor(imageView: ImageView, targetColor: Int, newColor: Int) {
+        val colorMatrix = ColorMatrix()
+        colorMatrix.set(
+            floatArrayOf(
+                1f, 0f, 0f, 0f, (Color.red(newColor) - Color.red(targetColor)) / 255f,
+                0f, 1f, 0f, 0f, (Color.green(newColor) - Color.green(targetColor)) / 255f,
+                0f, 0f, 1f, 0f, (Color.blue(newColor) - Color.blue(targetColor)) / 255f,
+                0f, 0f, 0f, 1f, 0f
+            )
+        )
+        imageView.colorFilter = ColorMatrixColorFilter(colorMatrix)
+    }
+    */
 }

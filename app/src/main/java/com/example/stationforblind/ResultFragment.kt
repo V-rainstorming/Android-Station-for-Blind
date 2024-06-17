@@ -2,15 +2,18 @@ package com.example.stationforblind
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.annotation.RequiresApi
 import androidx.fragment.app.Fragment
 import java.util.Locale
 
+@RequiresApi(Build.VERSION_CODES.Q)
 class ResultFragment : Fragment() {
     private var busData: BusInformation? = null
     private var searchKeyword: String? = null
@@ -40,16 +43,7 @@ class ResultFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        tts = TextToSpeech(requireActivity()) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                // TTS 초기화 성공
-                tts.language = Locale.KOREAN
-            } else {
-                // TTS 초기화 실패
-                println("Failed to initialize text to speech")
-            }
-        }
-
+        println("busData: $busData")
         val view = inflater.inflate(R.layout.component_search_result, container, false)
         val travelTimeText = busData?.travelTime.toString() + "분"
         val numberOfStopsText = busData?.numberOfStops.toString() + "개 정류장 이동"
@@ -68,10 +62,6 @@ class ResultFragment : Fragment() {
             intent.putExtra("search_keyword", searchKeyword)
             startActivity(intent)
         }
-        val speechString = "${busData?.sourceName}에서 ${busData?.busNumber}번 버스를 타고 " +
-                "${busData?.destinationName}으로 가는 버스입니다 " +
-                "${busData?.numberOfStops}개의 정류장을 이동하며 ${busData?.travelTime}분이 소요됩니다"
-        tts.speak(speechString, TextToSpeech.QUEUE_FLUSH, null, null)
         return view
     }
 
