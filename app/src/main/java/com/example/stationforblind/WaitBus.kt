@@ -236,6 +236,7 @@ class WaitBus : AppCompatActivity(), SensorEventListener {
             updateLayout()
             disableArrow()
             vibrator.cancel()
+            vibrationMode = -1
             return
         }
         val x1 = busDataWithPos.busX

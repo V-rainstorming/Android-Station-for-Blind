@@ -51,7 +51,7 @@ class SearchResult : AppCompatActivity(), SensorEventListener {
     //private lateinit var btnSpeech : ImageButton
 
     // text-to-speech
-    lateinit var tts : TextToSpeech
+    private lateinit var tts : TextToSpeech
 
     // 가속도 센서
     private lateinit var sensorManager : SensorManager
@@ -118,6 +118,7 @@ class SearchResult : AppCompatActivity(), SensorEventListener {
         tts.speak(speechString, TextToSpeech.QUEUE_FLUSH, null, null)
     }
     private fun findMappedKeyword(keyword: String) {
+        println("Keyword: $keyword")
         RetrofitBuilder.api.getMappedKeyword(keyword).enqueue(object : Callback<StationNickname> {
             override fun onResponse(call : Call<StationNickname>, response: Response<StationNickname>) {
                 if (response.isSuccessful) {
@@ -129,7 +130,7 @@ class SearchResult : AppCompatActivity(), SensorEventListener {
                     }
                 }
                 else {
-                    println("error : response is not succeed.")
+                    println("Error: ${response.code()} - ${response.message()}")
                 }
             }
             override fun onFailure(call : Call<StationNickname>, t : Throwable) { }

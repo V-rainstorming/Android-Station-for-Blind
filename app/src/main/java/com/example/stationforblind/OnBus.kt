@@ -69,6 +69,7 @@ class OnBus : AppCompatActivity() {
                 findViewById<ConstraintLayout>(R.id.main).setOnClickListener {
                     speakText()
                 }
+                tts.speak("승차확인 되었습니다.", TextToSpeech.QUEUE_FLUSH, null, null)
             } else {
                 // TTS 초기화 실패
                 println("Failed to initialize text to speech")
@@ -210,6 +211,7 @@ class OnBus : AppCompatActivity() {
     private fun addOnBackPressedCallback() {
         val callback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                client.dispatcher.cancelAll()
                 val intent = Intent(this@OnBus, MainActivity::class.java)
                 intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                 startActivity(intent)

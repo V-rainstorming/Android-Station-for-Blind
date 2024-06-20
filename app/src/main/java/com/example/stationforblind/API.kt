@@ -24,7 +24,7 @@ interface API {
     fun getServiceID(@Body params: HashMap<String, Any>): Call<ServiceID>
     @GET("/azimuth")
     fun getAzimuthFromServer(): Call<Azimuth>
-    @GET("/bus_station_nickname")
+    @GET("/BusStationName")
     fun getMappedKeyword(
         @Query("bus_station_nickname") nickname: String
     ): Call<StationNickname>

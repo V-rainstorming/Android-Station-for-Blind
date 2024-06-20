@@ -17,7 +17,6 @@ import java.util.Locale
 class ResultFragment : Fragment() {
     private var busData: BusInformation? = null
     private var searchKeyword: String? = null
-    private lateinit var tts : TextToSpeech
 
     companion object {
         private const val ARG_BUS_DATA = "bus_data"
@@ -63,11 +62,5 @@ class ResultFragment : Fragment() {
             startActivity(intent)
         }
         return view
-    }
-
-    override fun onDestroy() {
-        tts.stop()
-        tts.shutdown()
-        super.onDestroy()
     }
 }
