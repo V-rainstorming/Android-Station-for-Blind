@@ -18,12 +18,12 @@ UWB 센서를 활용한 서비스로, 삼각측량으로 특정한 좌표를 기
 - FE: 김찬영
 - BE: 허승범
 
-![메인](https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20119%20(1).png)
-![검색결과](https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20120.png)
+![메인](https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20119%20(1).png){:width="150"}
+![검색결과](https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20120.png){:width="150"}
 
-![정류장안내](https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20133%20(2).png)
+![정류장안내](https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20133%20(2).png){:width="150"}
 
-![버스안내1](https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20134.png)
-![버스안내2](https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20161.png)
+![버스안내1](https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20134.png){:width="150"}
+![버스안내2](https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20161.png){:width="150"}
 
-![노선도](https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20121%20(1).png)
+![노선도](https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20121%20(1).png){:width="150"}
