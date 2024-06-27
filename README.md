@@ -18,23 +18,24 @@ UWB 센서를 활용한 서비스로, 삼각측량으로 특정한 좌표를 기
 - FE: 김찬영
 - BE: 허승범
 
-<center>
-  #### 경로 검색
-  <div display="flex">
-    <img src="https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20119%20(1).png" width="150"/>
-    <img src="https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20120.png" width="150"/>
-  </div>
+<h4 align="center">경로 검색</h4>
+<div display="flex" style="justify-content: center">>
+<img src="https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20119%20(1).png" width="150"/>
+<img src="https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20120.png" width="150"/>
+</div>
 
-  #### 정류장 안내
+<h4 align="center">정류장 안내</h4>
+<div display="flex" style="justify-content: center">
   <img src="https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20133%20(2).png" width="150"/>
+</div>
 
-  #### 버스 안내
-  <div display="flex">
-    <img src="https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20134.png" width="150"/>
-    <img src="https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20161.png" width="150"/>
-  </div>
+<h4 align="center">버스 안내</h4>
+<div display="flex" style="justify-content: center">
+  <img src="https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20134.png" width="150"/>
+  <img src="https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20161.png" width="150"/>
+</div>
 
-  #### 노선도
+<h4 align="center">노선도</h4>
+<div display="flex" style="justify-content: center">
   <img src="https://github.com/V-rainstorming/Android-Station-for-Blind/blob/main/Group%20121%20(1).png" width="150"/>
-
-</center>
+</div>
